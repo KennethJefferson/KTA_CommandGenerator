@@ -1,5 +1,6 @@
 ﻿<File version="3.2">
   <FileID>92e67604-4468-4efd-8340-ba8634dd5215</FileID>
+  <LastExport>134087901743839806</LastExport>
   <Preview>iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAAAAXNSR0IArs4c6QAAAARnQU1BAACx
 jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAJlqSURBVHhe7J0HeBzV1YYFJISahCSETkIvKUAg
 IdTkJ5BCGgESSCAQejPY2Ma99yIXuclFsi3J6rJ677333nvvq12ttGrv/9xZrbwaS5YMtgz4fs/z
@@ -730,8 +731,13 @@ ZAkYZgSnrRKVtP7o6u/GitTG4QaVvnpfrv5s7PzdsYHotvojuM1RHCIHJ9EAjwQrdbhL/G3pEqZ3
 IC7R8RXqH90pSPtWkb4utuvjOdsM76eepfJO/h832rywETsAAA==</Form>
   <Code><![CDATA[
 $formKevinTheAntagonizerN_Load={
-	#TODO: Initialize Form Controls here
 	Set-ControlTheme $formKevinTheAntagonizerN -Theme Dark
+
+	# Set default values
+	$txtWorkers.Text = '1'
+
+	# Initial command generation
+	Update-CommandOutput
 }
 
 $darkToolStripMenuItem_Click={
@@ -742,6 +748,67 @@ $darkToolStripMenuItem_Click={
 $lightToolStripMenuItem_Click={
 	Set-ControlTheme -Control $formKevinTheAntagonizerN -Theme Light
 }
+
+#region Scan Directory Button Click
+$btnScanDirectoty_Click={
+	if ($objFB_DirectoryScan.ShowDialog() -eq 'OK') {
+		$selectedPath = $objFB_DirectoryScan.SelectedPath
+		if ($textbox1.Text.Trim() -ne '') {
+			$textbox1.Text += "`r`n" + $selectedPath
+		} else {
+			$textbox1.Text = $selectedPath
+		}
+		Update-CommandOutput
+	}
+}
+#endregion
+
+#region Update Command Output Function
+function Update-CommandOutput {
+	$command = $txtCommandPrefix.Text.TrimEnd()
+
+	# Handle mutually exclusive information flags first
+	if ($cbHelp.Checked) {
+		$command += " --help"
+		$txtCommandOutput.Text = $command
+		return
+	}
+
+	if ($checkboxListModels.Checked) {
+		$command += " --list-models"
+		$txtCommandOutput.Text = $command
+		return
+	}
+
+	# Standard -scan based commands
+	$scanFolders = $textbox1.Text.Split("`r`n", [StringSplitOptions]::RemoveEmptyEntries)
+	foreach ($folder in $scanFolders) {
+		if ($folder.Trim() -ne '') {
+			$command += " -scan `"$($folder.Trim())`""
+		}
+	}
+
+	# Add -recursive if checked
+	if ($cbRecursive.Checked) {
+		$command += " -recursive"
+	}
+
+	# Add -workers if not default
+	if ($txtWorkers.Text.Trim() -ne '' -and $txtWorkers.Text -ne '1') {
+		$command += " -workers $($txtWorkers.Text)"
+	}
+
+	$txtCommandOutput.Text = $command
+}
+#endregion
+
+#region Auto-update on control changes
+$cbRecursive_CheckedChanged={ Update-CommandOutput }
+$cbHelp_CheckedChanged={ Update-CommandOutput }
+$checkboxListModels_CheckedChanged={ Update-CommandOutput }
+$txtWorkers_TextChanged={ Update-CommandOutput }
+$textbox1_TextChanged={ Update-CommandOutput }
+#endregion
 
 #region Control Theme Helper Function
 <#
@@ -1061,6 +1128,18 @@ namespace SAPIENTypes
 
 
 
+
+#region Wire up Event Handlers
+# Wire up the custom event handlers when form is shown
+$formKevinTheAntagonizerN.add_Shown({
+	$btnScanDirectoty.add_Click($btnScanDirectoty_Click)
+	$cbRecursive.add_CheckedChanged($cbRecursive_CheckedChanged)
+	$cbHelp.add_CheckedChanged($cbHelp_CheckedChanged)
+	$checkboxListModels.add_CheckedChanged($checkboxListModels_CheckedChanged)
+	$txtWorkers.add_TextChanged($txtWorkers_TextChanged)
+	$textbox1.add_TextChanged($textbox1_TextChanged)
+})
+#endregion
 
 ]]></Code>
   <TV>0</TV>
